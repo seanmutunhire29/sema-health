@@ -1,0 +1,835 @@
+# Sema · Symptom Taxonomy
+#
+# Closed vocabulary that Gemma's NLU step (or in v1, Gemma itself acting
+# as NLU) must map user descriptions onto. Free-form symptom strings
+# never reach the triage engine — they are normalized to one of these
+# slugs first.
+#
+# Why a closed vocabulary
+# -----------------------
+# 1. Triage rules fire on slugs, not prose. Determinism is the safety net.
+# 2. Auditable: a clinician reviewing a case sees structured slugs, not
+#    a hallucinated free-text label.
+# 3. Cross-language: the slug is language-agnostic. Twi/Ga input maps
+#    onto the same slug English input does, so the rules engine is
+#    untouched by routing.
+#
+# Schema
+# ------
+# id              kebab-case slug. Stable.
+# label           short English label (UI / fallback chat string).
+# category        body system / class — drives chat picker UI grouping:
+#                   bleeding | breathing | circulation | consciousness |
+#                   gi | musculoskeletal | neuro | pain | skin |
+#                   temperature | trauma | sensory | toxic | allergic |
+#                   psychological | obstetric
+# aliases         alternative phrasings users might say. Used by
+#                 keyword-matching extractor (v1 fallback when Gemma is
+#                 unavailable) and by the NLU model's training data.
+# severity_hint   in-isolation worry level: low | medium | high | emergency
+#                 - low      common, usually self-limiting
+#                 - medium   monitor, may need clinic
+#                 - high     usually needs medical attention
+#                 - emergency call services on detection
+# age_groups      where this symptom is meaningful: infant | child | adult
+# requires_vital  measurement that must accompany this symptom for the
+#                 triage engine to score it (e.g. fever needs body_temp).
+# related_entries first_aid.yaml ids that handle this symptom.
+# is_red_flag     true if this slug is also a red-flag predicate
+#                 referenced from first_aid.yaml's `red_flags:` arrays.
+#                 (We allow a symptom and a red flag to share a slug —
+#                 the rule engine treats them the same.)
+
+schema_version: 1
+generated_on: 2026-05-02
+reviewed_by: pending
+
+symptoms:
+
+  # ============================================================== #
+  # Bleeding
+  # ============================================================== #
+  - id: minor-bleeding
+    label: Minor cut or scrape with bleeding
+    category: bleeding
+    aliases: ["small cut", "scrape", "graze", "I cut myself", "paper cut"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [minor-wounds]
+
+  - id: severe-bleeding
+    label: Severe / heavy bleeding
+    category: bleeding
+    aliases: ["bleeding a lot", "won't stop bleeding", "blood pouring", "bleeding heavily"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [severe-bleeding]
+
+  - id: heavy-bleeding
+    label: Heavy bleeding
+    category: bleeding
+    aliases: ["lots of blood", "blood soaking through cloth"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [severe-bleeding]
+    is_red_flag: true
+
+  - id: arterial-bleeding
+    label: Spurting / pulsing bleeding (artery)
+    category: bleeding
+    aliases: ["blood spurting", "blood pulsing out"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [severe-bleeding]
+    is_red_flag: true
+
+  - id: nosebleed
+    label: Nosebleed
+    category: bleeding
+    aliases: ["bleeding nose", "blood from nose", "epistaxis"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [nosebleed]
+
+  # ============================================================== #
+  # Breathing & airway
+  # ============================================================== #
+  - id: breathing-difficulty
+    label: Difficulty breathing
+    category: breathing
+    aliases: ["short of breath", "can't breathe", "trouble breathing", "shortness of breath", "breathless"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis, choking-adult-child]
+    is_red_flag: true
+
+  - id: cannot-breathe
+    label: Cannot breathe
+    category: breathing
+    aliases: ["airway blocked", "no air", "suffocating"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [choking-adult-child]
+    is_red_flag: true
+
+  - id: choking
+    label: Choking
+    category: breathing
+    aliases: ["something in my throat", "food stuck", "can't swallow"]
+    severity_hint: emergency
+    age_groups: [child, adult]
+    related_entries: [choking-adult-child]
+
+  - id: choking-infant
+    label: Choking — infant
+    category: breathing
+    aliases: ["baby is choking", "infant cannot cry"]
+    severity_hint: emergency
+    age_groups: [infant]
+    related_entries: [choking-infant]
+
+  - id: airway-obstruction
+    label: Airway obstruction
+    category: breathing
+    severity_hint: emergency
+    age_groups: [child, adult]
+    related_entries: [choking-adult-child]
+    is_red_flag: true
+
+  - id: airway-obstruction-infant
+    label: Airway obstruction — infant
+    category: breathing
+    severity_hint: emergency
+    age_groups: [infant]
+    related_entries: [choking-infant]
+    is_red_flag: true
+
+  - id: hyperventilation
+    label: Hyperventilation / rapid breathing
+    category: breathing
+    aliases: ["breathing too fast", "panic breathing", "rapid breathing"]
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [hyperventilation]
+
+  - id: rapid-breathing
+    label: Rapid breathing
+    category: breathing
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [hyperventilation]
+
+  - id: panic-breathing
+    label: Panic-driven rapid breathing
+    category: breathing
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [hyperventilation]
+
+  - id: anxiety-breathing
+    label: Anxiety-related breathing changes
+    category: breathing
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [hyperventilation]
+
+  - id: blue-lips-or-fingertips
+    label: Blue lips or fingertips (cyanosis)
+    category: breathing
+    aliases: ["lips turning blue", "fingers blue"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    is_red_flag: true
+
+  - id: throat-tightness
+    label: Throat tightness
+    category: breathing
+    aliases: ["throat closing", "can't swallow"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis]
+    is_red_flag: true
+
+  # ============================================================== #
+  # Allergic / anaphylactic
+  # ============================================================== #
+  - id: allergic-reaction-severe
+    label: Severe allergic reaction
+    category: allergic
+    aliases: ["anaphylaxis", "bad allergy attack"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis]
+
+  - id: swelling-lips
+    label: Swelling of the lips
+    category: allergic
+    aliases: ["lips swelling", "fat lip suddenly"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis]
+    is_red_flag: true
+
+  - id: swelling-tongue
+    label: Swelling of the tongue
+    category: allergic
+    aliases: ["tongue swelling", "tongue feels too big"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis]
+    is_red_flag: true
+
+  - id: hives
+    label: Hives (urticaria)
+    category: skin
+    aliases: ["welts", "raised itchy bumps", "urticaria"]
+    severity_hint: medium
+    age_groups: [infant, child, adult]
+    related_entries: [skin-itch-rash, anaphylaxis]
+
+  - id: widespread-hives
+    label: Widespread hives
+    category: skin
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [anaphylaxis]
+    is_red_flag: true
+
+  - id: allergic-skin-reaction
+    label: Allergic skin reaction
+    category: skin
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [skin-itch-rash]
+
+  # ============================================================== #
+  # Pain & headache
+  # ============================================================== #
+  - id: headache
+    label: Headache
+    category: pain
+    aliases: ["head pain", "my head hurts", "head ache"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [headache]
+
+  - id: head-pain
+    label: Head pain
+    category: pain
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [headache]
+
+  - id: worst-headache-of-life
+    label: Worst headache of life
+    category: pain
+    aliases: ["worst headache ever", "thunderclap headache"]
+    severity_hint: emergency
+    age_groups: [child, adult]
+    is_red_flag: true
+
+  - id: stiff-neck
+    label: Stiff neck
+    category: pain
+    aliases: ["can't move neck", "neck rigid"]
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    is_red_flag: true
+
+  - id: chest-pain
+    label: Chest pain
+    category: pain
+    aliases: ["pain in chest", "chest hurts", "tight chest"]
+    severity_hint: emergency
+    age_groups: [adult]
+    is_red_flag: true
+
+  - id: severe-limb-pain
+    label: Severe limb pain
+    category: pain
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [broken-limb]
+
+  - id: muscle-pain
+    label: Muscle pain
+    category: pain
+    aliases: ["muscle ache", "sore muscle", "pulled muscle"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [sprains-strains-rice]
+
+  - id: joint-pain
+    label: Joint pain
+    category: musculoskeletal
+    aliases: ["sore joint", "joint ache"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [sprains-strains-rice]
+
+  - id: body-aches
+    label: Body aches
+    category: pain
+    aliases: ["whole body sore", "achy"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [fever]
+
+  - id: eye-pain
+    label: Eye pain
+    category: pain
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [foreign-object-eye]
+
+  # ============================================================== #
+  # Temperature
+  # ============================================================== #
+  - id: fever
+    label: Fever
+    category: temperature
+    aliases: ["high temperature", "feverish", "hot to touch", "running a temp"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    requires_vital: body_temp_c
+    related_entries: [fever]
+
+  - id: high-temperature
+    label: High body temperature
+    category: temperature
+    severity_hint: medium
+    age_groups: [infant, child, adult]
+    requires_vital: body_temp_c
+    related_entries: [fever]
+
+  - id: chills
+    label: Chills
+    category: temperature
+    aliases: ["shivering", "feeling cold but feverish"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [fever]
+
+  - id: body-temperature-very-high
+    label: Body temperature very high (≥ 40 °C)
+    category: temperature
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    requires_vital: body_temp_c
+    related_entries: [heat-stroke]
+    is_red_flag: true
+
+  - id: hot-dry-skin
+    label: Hot, dry skin
+    category: temperature
+    aliases: ["skin feels hot but not sweating"]
+    severity_hint: emergency
+    age_groups: [child, adult]
+    related_entries: [heat-stroke]
+    is_red_flag: true
+
+  - id: hyperthermia
+    label: Hyperthermia (overheating)
+    category: temperature
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [heat-stroke]
+
+  - id: heat-stroke
+    label: Heat stroke
+    category: temperature
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [heat-stroke]
+
+  - id: hypothermia
+    label: Hypothermia (low body temperature)
+    category: temperature
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    requires_vital: body_temp_c
+    related_entries: [frostbite-hypothermia]
+
+  - id: shivering-uncontrollable
+    label: Uncontrollable shivering
+    category: temperature
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [frostbite-hypothermia]
+    is_red_flag: true
+
+  - id: cold-injury
+    label: Cold injury
+    category: temperature
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [frostbite-hypothermia]
+
+  - id: frostbite
+    label: Frostbite
+    category: temperature
+    severity_hint: high
+    age_groups: [child, adult]
+    related_entries: [frostbite-hypothermia]
+
+  # ============================================================== #
+  # Consciousness & neurological
+  # ============================================================== #
+  - id: loss-of-consciousness
+    label: Loss of consciousness
+    category: consciousness
+    aliases: ["passed out", "unconscious", "blacked out", "fainted and didn't wake"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    is_red_flag: true
+
+  - id: fainting
+    label: Fainting (brief)
+    category: consciousness
+    aliases: ["fainted", "passed out briefly", "syncope"]
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [fainting]
+
+  - id: syncope
+    label: Syncope
+    category: consciousness
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [fainting]
+
+  - id: lightheaded
+    label: Lightheaded / dizzy
+    category: consciousness
+    aliases: ["dizzy", "feel like fainting", "head spinning"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [fainting]
+
+  - id: confusion
+    label: Confusion / altered mental state
+    category: consciousness
+    aliases: ["confused", "not making sense", "disoriented"]
+    severity_hint: emergency
+    age_groups: [child, adult]
+    related_entries: [heat-stroke]
+    is_red_flag: true
+
+  - id: seizure
+    label: Seizure
+    category: neuro
+    aliases: ["fit", "convulsion", "epileptic episode", "shaking uncontrollably"]
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [seizure]
+
+  - id: convulsion
+    label: Convulsion
+    category: neuro
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [seizure]
+
+  - id: fit
+    label: Fit (seizure)
+    category: neuro
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [seizure]
+
+  - id: epileptic-episode
+    label: Epileptic episode
+    category: neuro
+    severity_hint: high
+    age_groups: [child, adult]
+    related_entries: [seizure]
+
+  # ============================================================== #
+  # Trauma & injury
+  # ============================================================== #
+  - id: cut
+    label: Cut
+    category: trauma
+    aliases: ["got cut", "knife cut"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [minor-wounds]
+
+  - id: scrape
+    label: Scrape / abrasion
+    category: trauma
+    aliases: ["graze", "road rash"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [minor-wounds]
+
+  - id: burn
+    label: Burn
+    category: trauma
+    aliases: ["got burned", "scalded"]
+    severity_hint: medium
+    age_groups: [infant, child, adult]
+    related_entries: [burns-minor]
+
+  - id: burn-minor
+    label: Minor burn
+    category: trauma
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [burns-minor]
+
+  - id: scald
+    label: Scald (hot liquid burn)
+    category: trauma
+    severity_hint: medium
+    age_groups: [infant, child, adult]
+    related_entries: [burns-minor]
+
+  - id: sunburn
+    label: Sunburn
+    category: skin
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [sunburn]
+
+  - id: sun-exposure-injury
+    label: Sun exposure injury
+    category: skin
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [sunburn]
+
+  - id: fracture
+    label: Suspected fracture
+    category: trauma
+    aliases: ["broken bone", "broken arm", "broken leg"]
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [broken-limb]
+
+  - id: broken-bone
+    label: Broken bone
+    category: trauma
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [broken-limb]
+
+  - id: deformed-limb
+    label: Visibly deformed limb
+    category: trauma
+    aliases: ["limb bent wrong", "limb out of place"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [broken-limb]
+    is_red_flag: true
+
+  - id: sprain
+    label: Sprain
+    category: musculoskeletal
+    aliases: ["twisted ankle", "rolled ankle", "sprained wrist"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [sprains-strains-rice, sprain-strain-clarifier]
+
+  - id: strain
+    label: Strain (muscle/tendon)
+    category: musculoskeletal
+    aliases: ["pulled muscle", "muscle strain"]
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [sprains-strains-rice, sprain-strain-clarifier]
+
+  - id: twisted-ankle
+    label: Twisted ankle
+    category: musculoskeletal
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [sprains-strains-rice]
+
+  - id: friction-injury
+    label: Friction blister / abrasion
+    category: skin
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [blister-friction]
+
+  - id: blister
+    label: Blister
+    category: skin
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [blister-friction]
+
+  - id: foreign-body-skin
+    label: Foreign body in skin (splinter)
+    category: trauma
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [splinter]
+
+  - id: splinter
+    label: Splinter
+    category: trauma
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [splinter]
+
+  - id: electric-shock
+    label: Electric shock
+    category: trauma
+    aliases: ["electrocuted", "got shocked"]
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [electric-shock]
+
+  - id: electrocution
+    label: Electrocution
+    category: trauma
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [electric-shock]
+
+  - id: electrical-burn
+    label: Electrical burn
+    category: trauma
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [electric-shock]
+
+  # ============================================================== #
+  # Sensory (eye, dental)
+  # ============================================================== #
+  - id: eye-foreign-body
+    label: Object in the eye
+    category: sensory
+    aliases: ["something in my eye", "speck in eye"]
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [foreign-object-eye]
+
+  - id: eye-injury
+    label: Eye injury
+    category: sensory
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [foreign-object-eye]
+
+  - id: vision-loss
+    label: Vision loss
+    category: sensory
+    aliases: ["can't see", "lost vision", "blurry then dark"]
+    severity_hint: emergency
+    age_groups: [child, adult]
+    is_red_flag: true
+
+  - id: knocked-out-tooth
+    label: Knocked-out tooth
+    category: sensory
+    aliases: ["tooth came out", "lost a tooth from injury"]
+    severity_hint: high
+    age_groups: [child, adult]
+    related_entries: [knocked-out-tooth]
+
+  - id: dental-trauma
+    label: Dental trauma
+    category: sensory
+    severity_hint: high
+    age_groups: [child, adult]
+    related_entries: [knocked-out-tooth]
+
+  - id: tooth-injury
+    label: Tooth injury
+    category: sensory
+    severity_hint: medium
+    age_groups: [child, adult]
+    related_entries: [knocked-out-tooth]
+
+  # ============================================================== #
+  # GI / hydration
+  # ============================================================== #
+  - id: diarrhea
+    label: Diarrhea
+    category: gi
+    aliases: ["loose stool", "watery stool", "running stomach"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [dehydration-diarrhea]
+
+  - id: dehydration
+    label: Dehydration
+    category: gi
+    aliases: ["very thirsty", "dry mouth", "haven't peed all day"]
+    severity_hint: medium
+    age_groups: [infant, child, adult]
+    related_entries: [dehydration-diarrhea]
+
+  - id: dry-mouth
+    label: Dry mouth
+    category: gi
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [dehydration-diarrhea]
+
+  - id: lethargy
+    label: Extreme lethargy / unresponsiveness
+    category: consciousness
+    aliases: ["very tired", "won't wake up", "floppy", "limp"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [dehydration-diarrhea]
+    is_red_flag: true
+
+  # ============================================================== #
+  # Toxic / envenomation
+  # ============================================================== #
+  - id: poisoning
+    label: Suspected poisoning
+    category: toxic
+    aliases: ["swallowed something dangerous", "ingested poison", "drank chemical"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [poisoning-ingestion]
+
+  - id: ingestion-poison
+    label: Ingestion of a poison
+    category: toxic
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [poisoning-ingestion]
+
+  - id: chemical-ingestion
+    label: Chemical ingestion
+    category: toxic
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [poisoning-ingestion]
+
+  - id: suspected-overdose
+    label: Suspected medication overdose
+    category: toxic
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [poisoning-ingestion]
+
+  - id: snake-bite
+    label: Snake bite
+    category: toxic
+    aliases: ["bitten by snake"]
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [snake-bite]
+
+  - id: animal-bite
+    label: Animal bite
+    category: trauma
+    aliases: ["dog bite", "cat bite", "bitten by animal"]
+    severity_hint: high
+    age_groups: [infant, child, adult]
+    related_entries: [snake-bite, minor-wounds]
+
+  - id: venom-exposure
+    label: Venom exposure
+    category: toxic
+    severity_hint: emergency
+    age_groups: [infant, child, adult]
+    related_entries: [snake-bite]
+
+  - id: bee-sting
+    label: Bee sting
+    category: toxic
+    aliases: ["stung by a bee"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [bee-sting-insect-bite]
+
+  - id: insect-bite
+    label: Insect bite
+    category: toxic
+    aliases: ["mosquito bite", "spider bite", "insect bite"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [bee-sting-insect-bite]
+
+  - id: sting
+    label: Sting (insect)
+    category: toxic
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [bee-sting-insect-bite]
+
+  # ============================================================== #
+  # Skin
+  # ============================================================== #
+  - id: rash
+    label: Rash
+    category: skin
+    aliases: ["red bumps", "skin rash", "breakout"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [skin-itch-rash]
+
+  - id: itch
+    label: Itch
+    category: skin
+    aliases: ["itchy skin", "itching"]
+    severity_hint: low
+    age_groups: [infant, child, adult]
+    related_entries: [skin-itch-rash]
+
+  - id: poison-ivy
+    label: Poison ivy / oak exposure
+    category: skin
+    severity_hint: low
+    age_groups: [child, adult]
+    related_entries: [skin-itch-rash]
+
+  # ============================================================== #
+  # Obstetric (used by triage rules, surfaced from profile flags)
+  # ============================================================== #
+  - id: vaginal-bleeding-pregnancy
+    label: Vaginal bleeding during pregnancy
+    category: obstetric
+    aliases: ["bleeding while pregnant"]
+    severity_hint: emergency
+    age_groups: [adult]
+    is_red_flag: true

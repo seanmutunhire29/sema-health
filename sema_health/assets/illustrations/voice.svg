@@ -1,0 +1,22 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- background concentric arcs (resonance) -->
+  <circle cx="120" cy="120" r="100" fill="#F0D4CE"/>
+  <circle cx="120" cy="120" r="74"  fill="#F2E2A8"/>
+  <circle cx="120" cy="120" r="50"  fill="#C9D7BC"/>
+
+  <!-- speech bubble core -->
+  <path d="M70 96 C70 78 84 64 102 64 H156 C174 64 188 78 188 96 V128 C188 146 174 160 156 160 H134 L120 178 L106 160 H102 C84 160 70 146 70 128 Z"
+        fill="#2A4A3D"/>
+
+  <!-- waveform inside -->
+  <rect x="92"  y="106" width="6" height="20" rx="3" fill="#F2E2A8"/>
+  <rect x="106" y="98"  width="6" height="36" rx="3" fill="#F2E2A8"/>
+  <rect x="120" y="90"  width="6" height="52" rx="3" fill="#F2E2A8"/>
+  <rect x="134" y="98"  width="6" height="36" rx="3" fill="#F2E2A8"/>
+  <rect x="148" y="106" width="6" height="20" rx="3" fill="#F2E2A8"/>
+
+  <!-- accent dots -->
+  <circle cx="36"  cy="60"  r="3" fill="#5C3A2E"/>
+  <circle cx="200" cy="36"  r="3" fill="#5C3A2E"/>
+  <circle cx="48"  cy="200" r="3" fill="#5C3A2E"/>
+</svg>

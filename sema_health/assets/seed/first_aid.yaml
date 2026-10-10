@@ -1,0 +1,873 @@
+# Sema · First-Aid Knowledge Graph
+#
+# Source corpus: Knowledge Graph/First Aid.txt (Sema in-house draft).
+# This file is intentionally clinician-reviewable: every emergency entry
+# must have `reviewed_by` and `references` populated before any release
+# tag. CI guards on `severity: emergency` + `reviewed_by: pending`.
+#
+# Schema
+# ------
+# id              kebab-case unique slug; stable identifier used by
+#                 lookup_first_aid(id) tool and conversation persistence.
+# title           short human label (UI tile + chat heading).
+# severity        low | medium | high | emergency
+#                 - low       household self-care
+#                 - medium    monitor; escalate if red-flag fires
+#                 - high      needs medical attention soon
+#                 - emergency call services / go to hospital now
+# age_groups      who this entry applies to: infant (<1y) | child (1-12) | adult
+# symptom_slugs   closed-vocabulary slugs Gemma must extract onto.
+#                 Source of truth for the taxonomy lives in symptoms.yaml.
+# red_flags       conditions that escalate this entry to emergency
+#                 regardless of base severity. Triage rules engine reads
+#                 these directly.
+# steps           ordered actions. `critical: true` means "do not skip,
+#                 do not reorder" — UI surfaces these with a red dot.
+# donts           explicit anti-actions (the source text's "Do NOT"
+#                 lines). Surfaced verbatim, never paraphrased by the LLM.
+# medications     named drugs / devices the entry recommends. Whitelist:
+#                 the safety guard allows Gemma to mention a drug only
+#                 if the matched first-aid entry lists it here.
+#                 - role: otc-pain-relief | otc-antihistamine |
+#                         otc-anti-itch | rx-emergency-device
+#                 - pediatric_contraindication: true if drug must NOT
+#                   be given to children (e.g. Aspirin / Reye's).
+# contraindications  profile-level blockers — the triage engine refuses
+#                    to surface this entry if any contraindication matches
+#                    the active profile (e.g. pregnancy + a drug).
+# notes           free-form clinician note shown beneath the steps.
+#                 NOT used as Gemma context — only the structured fields
+#                 reach the prompt, so the LLM cannot improvise on prose.
+# references      WHO / Red Cross / ministry-of-health citations. CI
+#                 fails the build if an `emergency` entry has [].
+# reviewed_by     "pending" | clinician identifier
+# reviewed_on     ISO date | null
+# escalation      what the chat agent must do when this entry fires
+#                 with red_flag matched — `call_emergency`, `go_to_er`,
+#                 `nearest_clinic`, `self_care`.
+
+schema_version: 1
+source: Knowledge Graph/First Aid.txt
+generated_on: 2026-05-02
+reviewed_by: pending
+reviewed_on: null
+
+entries:
+
+  # ---------------------------------------------------------------- #
+  # 1. Dehydration & diarrhea — ORS recipe
+  # ---------------------------------------------------------------- #
+  - id: dehydration-diarrhea
+    title: Dehydration & diarrhea
+    severity: medium
+    age_groups: [infant, child, adult]
+    symptom_slugs: [diarrhea, dehydration, lethargy, dry-mouth]
+    red_flags:
+      - cannot-keep-fluids-down
+      - extreme-lethargy
+      - infant-fewer-than-six-wet-diapers-24h
+    steps:
+      - { order: 1, action: "Boil and cool 1 litre of clean water.", critical: true }
+      - { order: 2, action: "Add 6 level teaspoons of sugar." }
+      - { order: 3, action: "Add ½ level teaspoon of salt." }
+      - { order: 4, action: "Stir until fully dissolved." }
+      - { order: 5, action: "Sip slowly and frequently — do not gulp." }
+    donts:
+      - "Do not use more salt than the recipe — too much salt is dangerous, especially for children."
+    medications: []
+    contraindications: []
+    notes: "If the patient cannot keep fluids down or shows signs of extreme lethargy, seek medical help immediately."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 2. Minor wounds (cuts and scrapes)
+  # ---------------------------------------------------------------- #
+  - id: minor-wounds
+    title: Minor cuts & scrapes
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [cut, scrape, minor-bleeding]
+    red_flags:
+      - bleeding-will-not-stop-after-10-minutes
+      - wound-deep-or-gaping
+      - wound-from-animal-bite
+    steps:
+      - { order: 1, action: "Wash your hands with soap or sanitizer first.", critical: true }
+      - { order: 2, action: "Apply gentle pressure with a clean cloth or bandage to stop bleeding." }
+      - { order: 3, action: "Rinse the wound with cool, clear water." }
+      - { order: 4, action: "Apply a thin layer of antibiotic ointment or petroleum jelly to keep the surface moist." }
+      - { order: 5, action: "Cover with a sterile bandage to keep bacteria out." }
+    donts:
+      - "Do not pour hydrogen peroxide or iodine directly into the wound — they damage tissue."
+    medications:
+      - { name: "Antibiotic ointment", role: otc-topical }
+      - { name: "Petroleum jelly", role: otc-topical }
+    contraindications: []
+    notes: "Mild soap on the surrounding skin is fine; keep it out of the wound itself."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 3. Severe bleeding
+  # ---------------------------------------------------------------- #
+  - id: severe-bleeding
+    title: Severe bleeding
+    severity: emergency
+    age_groups: [infant, child, adult]
+    symptom_slugs: [severe-bleeding, heavy-bleeding, arterial-bleeding]
+    red_flags:
+      - bleeding-spurting-or-pulsing
+      - blood-soaks-through-cloth-quickly
+      - patient-pale-cold-clammy
+    steps:
+      - { order: 1, action: "Call emergency services immediately.", critical: true }
+      - { order: 2, action: "Push down hard on the wound with both hands using a clean cloth.", critical: true }
+      - { order: 3, action: "If a limb is bleeding heavily and direct pressure is not working, apply a tourniquet 2–3 inches above the wound (between the wound and the heart)." }
+      - { order: 4, action: "Note the time the tourniquet was applied — tell the medics." }
+    donts:
+      - "Do not lift the cloth to check if the bleeding has stopped — keep pressure on."
+      - "Do not apply a tourniquet on the neck, head, or torso."
+    medications: []
+    contraindications: []
+    notes: "Tourniquet is a last resort for limb bleeding only. Direct pressure first."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 4. Headaches
+  # ---------------------------------------------------------------- #
+  - id: headache
+    title: Headache
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [headache, head-pain]
+    red_flags:
+      - worst-headache-of-life
+      - headache-after-head-injury
+      - headache-with-stiff-neck-and-fever
+      - sudden-thunderclap-headache
+    steps:
+      - { order: 1, action: "Drink a glass of water." }
+      - { order: 2, action: "Rest in a dark, quiet room." }
+      - { order: 3, action: "Place a cool compress on the forehead." }
+      - { order: 4, action: "Take an over-the-counter pain reliever as directed if needed." }
+    donts: []
+    medications:
+      - { name: "Ibuprofen", role: otc-pain-relief }
+      - { name: "Acetaminophen", role: otc-pain-relief }
+    contraindications: []
+    notes: "Most headaches are not emergencies, but the red-flag list is critical — do not self-treat those."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 5. Burns (minor)
+  # ---------------------------------------------------------------- #
+  - id: burns-minor
+    title: Minor burns
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [burn-minor, burn, scald]
+    red_flags:
+      - burn-larger-than-palm
+      - burn-on-face-hands-genitals-or-major-joint
+      - burn-charred-or-white-leathery
+      - burn-from-electricity-or-chemicals
+    steps:
+      - { order: 1, action: "Run cool (not cold) tap water over the burn for 10–20 minutes.", critical: true }
+      - { order: 2, action: "Remove jewelry and tight items before swelling starts." }
+      - { order: 3, action: "Cover loosely with a sterile gauze bandage." }
+    donts:
+      - "Do not pop blisters — they protect against infection."
+      - "Do not apply ice, butter, or toothpaste."
+    medications: []
+    contraindications: []
+    notes: "Any burn matching a red-flag belongs in the ER, not at home."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 6. Choking — Heimlich (adults / children > 1 year)
+  # ---------------------------------------------------------------- #
+  - id: choking-adult-child
+    title: Choking (adult / child)
+    severity: emergency
+    age_groups: [child, adult]
+    symptom_slugs: [choking, airway-obstruction, cannot-breathe]
+    red_flags:
+      - cannot-cough-speak-or-breathe
+      - patient-turning-blue
+      - patient-loses-consciousness
+    steps:
+      - { order: 1, action: "If they can cough or speak, encourage them to keep coughing — do not interfere." }
+      - { order: 2, action: "If they cannot breathe: stand behind them and wrap your arms around their waist.", critical: true }
+      - { order: 3, action: "Make a fist. Place the thumb side just above the navel.", critical: true }
+      - { order: 4, action: "Perform quick, upward-and-inward thrusts until the object is forced out.", critical: true }
+      - { order: 5, action: "If they lose consciousness, lower them carefully and start CPR. Call emergency services." }
+    donts:
+      - "Do not use this technique on infants under 1 year — see Choking (infants)."
+    medications: []
+    contraindications:
+      - { profile: pregnant, alternative: "Use chest thrusts instead of abdominal thrusts." }
+    notes: "Continue thrusts until the object comes out or the person becomes unresponsive."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 7. Choking — infants < 1 year
+  # ---------------------------------------------------------------- #
+  - id: choking-infant
+    title: Choking (infant under 1 year)
+    severity: emergency
+    age_groups: [infant]
+    symptom_slugs: [choking-infant, airway-obstruction-infant]
+    red_flags:
+      - infant-cannot-cry-or-cough
+      - infant-turning-blue
+      - infant-loses-consciousness
+    steps:
+      - { order: 1, action: "Lay the baby face-down on your forearm, resting on your thigh. Support the jaw.", critical: true }
+      - { order: 2, action: "Give 5 firm back blows between the shoulder blades with the heel of your hand.", critical: true }
+      - { order: 3, action: "Turn the baby face-up.", critical: true }
+      - { order: 4, action: "Place two fingers in the centre of the chest (just below the nipple line) and give 5 quick chest thrusts.", critical: true }
+      - { order: 5, action: "Repeat the cycle until the object comes out or the baby starts crying." }
+      - { order: 6, action: "If the baby loses consciousness, start infant CPR and call emergency services.", critical: true }
+    donts:
+      - "Do not use the adult Heimlich manoeuvre on a baby."
+      - "Do not blindly sweep the mouth — you may push the object deeper."
+    medications: []
+    contraindications: []
+    notes: "Five back blows + five chest thrusts is one cycle. Never stop until help arrives or the baby breathes."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 8. Sprains and strains — R.I.C.E.
+  # ---------------------------------------------------------------- #
+  - id: sprains-strains-rice
+    title: Sprains & strains (R.I.C.E.)
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [sprain, strain, joint-pain, twisted-ankle, muscle-pain]
+    red_flags:
+      - cannot-bear-weight-at-all
+      - joint-visibly-deformed
+      - numbness-or-cold-below-injury
+    steps:
+      - { order: 1, action: "Rest — avoid putting weight on the injured area." }
+      - { order: 2, action: "Ice — apply cold packs for 15–20 minutes every few hours." }
+      - { order: 3, action: "Compression — wrap with an elastic bandage (firm, not tight)." }
+      - { order: 4, action: "Elevation — keep the injured limb above heart level." }
+    donts:
+      - "Do not apply ice directly to skin — wrap it in a cloth."
+      - "Do not wrap so tightly that fingers/toes turn cold or blue."
+    medications: []
+    contraindications: []
+    notes: "If pain or swelling has not improved in 48 hours, see a clinician."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 9. Anaphylaxis — severe allergic reaction
+  # ---------------------------------------------------------------- #
+  - id: anaphylaxis
+    title: Severe allergic reaction (anaphylaxis)
+    severity: emergency
+    age_groups: [infant, child, adult]
+    symptom_slugs: [swelling-lips, swelling-tongue, hives, breathing-difficulty, allergic-reaction-severe, throat-tightness]
+    red_flags:
+      - airway-closing
+      - swelling-of-lips-or-tongue
+      - widespread-hives-with-breathing-difficulty
+      - loss-of-consciousness
+    steps:
+      - { order: 1, action: "Call emergency services immediately.", critical: true }
+      - { order: 2, action: "If the person has an epinephrine autoinjector (EpiPen), help them use it. Inject into the outer mid-thigh.", critical: true }
+      - { order: 3, action: "Have the person lie flat on their back with their feet raised.", critical: true }
+      - { order: 4, action: "If they are vomiting or having trouble breathing, let them sit up instead." }
+      - { order: 5, action: "If symptoms do not improve and help is more than 5–10 minutes away, a second injection may be needed." }
+    donts:
+      - "Do not give food or drink — the airway can close."
+      - "Do not delay the EpiPen waiting to 'see if it gets worse'."
+    medications:
+      - { name: "Epinephrine (EpiPen)", role: rx-emergency-device }
+    contraindications: []
+    notes: "Anaphylaxis can recur 4–12 hours after the first reaction. Hospital observation is required even if the EpiPen worked."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 10. Snake bites
+  # ---------------------------------------------------------------- #
+  - id: snake-bite
+    title: Snake bite
+    severity: emergency
+    age_groups: [infant, child, adult]
+    symptom_slugs: [snake-bite, animal-bite, venom-exposure]
+    red_flags:
+      - rapidly-spreading-swelling
+      - difficulty-breathing
+      - drooping-eyelids-or-blurred-vision
+      - bleeding-from-gums-or-bite-site
+    steps:
+      - { order: 1, action: "Move away from the snake's striking distance — but do not chase it." }
+      - { order: 2, action: "Keep the patient still and as calm as possible — a low heart rate slows the venom.", critical: true }
+      - { order: 3, action: "Keep the bitten limb below the level of the heart." }
+      - { order: 4, action: "Remove rings, watches, and tight clothing before the limb swells." }
+      - { order: 5, action: "Wash the bite gently with soap and water and cover with a clean, dry dressing." }
+      - { order: 6, action: "Get to the nearest hospital with antivenom capability — do not wait for symptoms.", critical: true }
+    donts:
+      - "Do not apply a tourniquet."
+      - "Do not cut the wound or try to suck out the venom."
+      - "Do not apply ice."
+      - "Do not try to catch or kill the snake — a phone photo from a safe distance is enough for identification."
+    medications: []
+    contraindications: []
+    notes: "Note the time of the bite. Antivenom works best within hours."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 11. Poisoning (ingestion)
+  # ---------------------------------------------------------------- #
+  - id: poisoning-ingestion
+    title: Poisoning (swallowed)
+    severity: emergency
+    age_groups: [infant, child, adult]
+    symptom_slugs: [poisoning, ingestion-poison, chemical-ingestion, suspected-overdose]
+    red_flags:
+      - loss-of-consciousness
+      - seizure
+      - difficulty-breathing
+      - chemical-burns-around-mouth
+    steps:
+      - { order: 1, action: "Call poison control or emergency services immediately.", critical: true }
+      - { order: 2, action: "Find the container or bottle so you can tell responders exactly what was swallowed.", critical: true }
+      - { order: 3, action: "If the person is awake and able, gently clear any remaining solid pieces from the mouth." }
+      - { order: 4, action: "Stay with the person and monitor breathing until help arrives." }
+    donts:
+      - "Do not induce vomiting unless a medical professional tells you to — some chemicals (e.g. bleach) cause more damage on the way back up."
+      - "Do not give milk, water, or anything else unless poison control instructs."
+    medications: []
+    contraindications: []
+    notes: "Speed and identification matter more than anything else."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 12. Heat stroke
+  # ---------------------------------------------------------------- #
+  - id: heat-stroke
+    title: Heat stroke
+    severity: emergency
+    age_groups: [infant, child, adult]
+    symptom_slugs: [heat-stroke, hyperthermia, hot-dry-skin, confusion, body-temperature-very-high]
+    red_flags:
+      - body-temperature-above-40c
+      - confusion-or-altered-mental-state
+      - loss-of-consciousness
+      - seizure
+    steps:
+      - { order: 1, action: "Move the person into shade or a cool, air-conditioned space.", critical: true }
+      - { order: 2, action: "Cool them rapidly: spray cool water, use fans, place ice packs on the neck, armpits, and groin.", critical: true }
+      - { order: 3, action: "If conscious, give small sips of cool water or an electrolyte drink." }
+      - { order: 4, action: "If they lose consciousness, turn them onto their side (recovery position) and wait for paramedics.", critical: true }
+    donts:
+      - "Do not give cold drinks if the person is confused or vomiting."
+      - "Do not delay cooling while waiting for paramedics — every minute counts."
+    medications: []
+    contraindications: []
+    notes: "Heat stroke happens when core body temperature rises above 40 °C (104 °F). It is a race against time."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 13. Seizures
+  # ---------------------------------------------------------------- #
+  - id: seizure
+    title: Seizure
+    severity: high
+    age_groups: [infant, child, adult]
+    symptom_slugs: [seizure, convulsion, fit, epileptic-episode]
+    red_flags:
+      - seizure-longer-than-5-minutes
+      - second-seizure-within-24-hours
+      - first-ever-seizure
+      - seizure-in-water
+      - injury-during-seizure
+      - person-not-fully-conscious-after-seizure
+    steps:
+      - { order: 1, action: "Move hard or sharp objects away from the person.", critical: true }
+      - { order: 2, action: "Place something soft (a folded jacket) under their head." }
+      - { order: 3, action: "Time the seizure. If it lasts longer than 5 minutes, call emergency services.", critical: true }
+      - { order: 4, action: "Once it ends, turn them onto their side (recovery position) until fully awake." }
+    donts:
+      - "Do not restrain the person or try to stop their movements."
+      - "Do not put anything in their mouth — people cannot swallow their tongues, and objects cause choking and broken teeth."
+    medications: []
+    contraindications: []
+    notes: "Most seizures stop on their own within a few minutes. Stay calm and keep the area safe."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 14. Nosebleeds
+  # ---------------------------------------------------------------- #
+  - id: nosebleed
+    title: Nosebleed
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [nosebleed]
+    red_flags:
+      - nosebleed-after-head-injury
+      - bleeding-longer-than-20-minutes
+      - heavy-bleeding-with-dizziness
+    steps:
+      - { order: 1, action: "Sit upright. Do not lie down." }
+      - { order: 2, action: "Lean forward slightly so blood goes out the nose, not down the throat." }
+      - { order: 3, action: "Pinch the soft part of the nose with thumb and index finger. Hold for 10 full minutes without letting go.", critical: true }
+      - { order: 4, action: "Place an ice pack on the bridge of the nose to constrict blood vessels." }
+    donts:
+      - "Do not tilt the head back — swallowed blood causes nausea and vomiting."
+      - "Do not let go before the 10 minutes are up to 'check' — the clot will not have formed."
+    medications: []
+    contraindications: []
+    notes: "If bleeding has not stopped after 20 minutes, see a clinician."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 15. Bee stings & insect bites
+  # ---------------------------------------------------------------- #
+  - id: bee-sting-insect-bite
+    title: Bee sting / insect bite
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [bee-sting, insect-bite, sting]
+    red_flags:
+      - swelling-of-lips-or-tongue
+      - widespread-hives
+      - difficulty-breathing
+      - dizziness-or-fainting
+    steps:
+      - { order: 1, action: "If the stinger is still in the skin, scrape it out with a flat object like a credit card." }
+      - { order: 2, action: "Wash the area with soap and water." }
+      - { order: 3, action: "Apply a cold compress to reduce swelling." }
+      - { order: 4, action: "If the sting is on a limb, keep it raised." }
+    donts:
+      - "Do not use tweezers on a bee stinger — squeezing pumps more venom in."
+    medications: []
+    contraindications: []
+    notes: "If any red-flag fires, treat as Anaphylaxis."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 16. Objects in the eye
+  # ---------------------------------------------------------------- #
+  - id: foreign-object-eye
+    title: Object in the eye
+    severity: medium
+    age_groups: [child, adult]
+    symptom_slugs: [eye-foreign-body, eye-injury, eye-pain]
+    red_flags:
+      - object-embedded-in-eye
+      - vision-loss
+      - chemical-splash-in-eye
+      - object-from-high-speed-impact
+    steps:
+      - { order: 1, action: "Do not rub the eye." }
+      - { order: 2, action: "Blink several times — natural tearing often washes the object out." }
+      - { order: 3, action: "Flush with a gentle stream of clean water or saline. Tilt the head so the affected eye is down." }
+      - { order: 4, action: "If the object is embedded, do not touch it. Place a paper cup over the eye to protect it and go to the ER.", critical: true }
+    donts:
+      - "Do not try to remove an embedded object."
+      - "Do not bandage tightly over the eye."
+    medications: []
+    contraindications: []
+    notes: "Chemical splashes need 15+ minutes of continuous flushing while someone calls for help."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 17. Fainting
+  # ---------------------------------------------------------------- #
+  - id: fainting
+    title: Fainting
+    severity: medium
+    age_groups: [child, adult]
+    symptom_slugs: [fainting, syncope, loss-of-consciousness, lightheaded]
+    red_flags:
+      - did-not-regain-consciousness-within-1-minute
+      - chest-pain-before-fainting
+      - shortness-of-breath
+      - irregular-heartbeat
+      - fainting-during-exercise
+    steps:
+      - { order: 1, action: "If they feel faint, have them lie down before they fall." }
+      - { order: 2, action: "If they have already fainted, keep them on their back and raise their feet about 30 cm above heart level." }
+      - { order: 3, action: "Loosen tight clothing and ensure fresh air." }
+      - { order: 4, action: "If they do not regain consciousness within a minute, call emergency services.", critical: true }
+    donts:
+      - "Do not give food or water until they are fully awake and alert."
+    medications: []
+    contraindications: []
+    notes: "Fainting after exercise, with chest pain, or with palpitations is never benign — escalate."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 18. Frostbite & hypothermia
+  # ---------------------------------------------------------------- #
+  - id: frostbite-hypothermia
+    title: Frostbite & hypothermia
+    severity: high
+    age_groups: [infant, child, adult]
+    symptom_slugs: [frostbite, hypothermia, cold-injury, shivering-uncontrollable]
+    red_flags:
+      - body-temperature-below-35c
+      - confusion-or-slurred-speech
+      - skin-hard-or-waxy
+      - loss-of-consciousness
+    steps:
+      - { order: 1, action: "Move the person out of the cold to a warm space.", critical: true }
+      - { order: 2, action: "Replace wet clothing with dry blankets." }
+      - { order: 3, action: "For frostbitten skin (fingers/toes), soak in lukewarm — not hot — water." }
+      - { order: 4, action: "Give warm, non-alcoholic liquids if the person is conscious and able to swallow." }
+    donts:
+      - "Do not rub frostbitten skin — ice crystals in the tissue cause more damage."
+      - "Do not use direct heat (heating pads, fires) on frostbitten skin."
+      - "Do not give alcohol — it accelerates heat loss."
+    medications: []
+    contraindications: []
+    notes: "Severe hypothermia (core temp < 35 °C) needs hospital re-warming."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 19. Electric shock
+  # ---------------------------------------------------------------- #
+  - id: electric-shock
+    title: Electric shock
+    severity: high
+    age_groups: [infant, child, adult]
+    symptom_slugs: [electric-shock, electrocution, electrical-burn]
+    red_flags:
+      - high-voltage-source
+      - patient-unconscious
+      - cardiac-arrest
+      - visible-burns-at-entry-and-exit-points
+    steps:
+      - { order: 1, action: "Do not touch the person while they are still in contact with the electrical source.", critical: true }
+      - { order: 2, action: "Turn off the power at the breaker or unplug the device. If you cannot, push the person away with a non-conducting object (e.g. a wooden broom handle)." }
+      - { order: 3, action: "Once safe, check for breathing. If they are not breathing, start CPR and call emergency services." }
+      - { order: 4, action: "Even if the person looks fine, internal damage can occur — they should be seen by a doctor.", critical: true }
+    donts:
+      - "Do not approach a high-voltage source (downed power line, industrial line) — call emergency services and keep bystanders 10 m back."
+    medications: []
+    contraindications: []
+    notes: "Electrical burns often look small on the skin but can hide deep tissue and cardiac damage."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: call_emergency
+
+  # ---------------------------------------------------------------- #
+  # 20. Knocked-out tooth
+  # ---------------------------------------------------------------- #
+  - id: knocked-out-tooth
+    title: Knocked-out tooth
+    severity: high
+    age_groups: [child, adult]
+    symptom_slugs: [knocked-out-tooth, dental-trauma, tooth-injury]
+    red_flags:
+      - heavy-bleeding-from-mouth
+      - jaw-pain-or-misalignment
+      - head-injury
+    steps:
+      - { order: 1, action: "Pick the tooth up by the crown (chewing part). Do not touch the root." }
+      - { order: 2, action: "If dirty, rinse gently with water — do not scrub." }
+      - { order: 3, action: "If possible, place the tooth back in the socket and have the person bite gently on gauze." }
+      - { order: 4, action: "If you cannot reinsert it, store it in a small container of milk, or in the person's own saliva." }
+      - { order: 5, action: "See a dentist within 30 minutes for the best chance of saving the tooth.", critical: true }
+    donts:
+      - "Do not scrub the root or use soap on the tooth."
+      - "Do not store the tooth dry."
+    medications: []
+    contraindications: []
+    notes: "Baby teeth are usually not reinserted — see a dentist regardless."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 21. Broken limbs (fractures)
+  # ---------------------------------------------------------------- #
+  - id: broken-limb
+    title: Broken limb (suspected fracture)
+    severity: high
+    age_groups: [infant, child, adult]
+    symptom_slugs: [fracture, broken-bone, deformed-limb, severe-limb-pain]
+    red_flags:
+      - bone-visible-through-skin
+      - limb-cold-blue-or-numb
+      - heavy-bleeding-at-the-fracture
+      - injury-from-fall-from-height
+      - injury-to-spine-or-head
+    steps:
+      - { order: 1, action: "Stop any bleeding with pressure and a clean cloth." }
+      - { order: 2, action: "Immobilize the area with a splint (folded cardboard, a heavy stick, or a rolled-up magazine). Keep the joints above and below the break still.", critical: true }
+      - { order: 3, action: "Wrap ice in a cloth and apply to reduce swelling and pain." }
+      - { order: 4, action: "Treat for shock: have the person lie down and keep them warm with a blanket." }
+      - { order: 5, action: "Get to a hospital — every suspected fracture needs an X-ray.", critical: true }
+    donts:
+      - "Do not try to push a bone back into the skin or 'straighten' the limb."
+      - "Do not give food or drink in case surgery is needed."
+    medications: []
+    contraindications: []
+    notes: "Open (compound) fractures with bone showing are an emergency — call services."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: nearest_clinic
+
+  # ---------------------------------------------------------------- #
+  # 22. Fever
+  # ---------------------------------------------------------------- #
+  - id: fever
+    title: Fever
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [fever, high-temperature, chills, body-aches]
+    red_flags:
+      - infant-under-3-months-with-any-fever
+      - adult-temperature-over-39-4c
+      - fever-with-stiff-neck
+      - fever-with-confusion
+      - fever-with-rash
+      - fever-longer-than-3-days
+    steps:
+      - { order: 1, action: "Encourage water, juice, or broth to keep hydrated.", critical: true }
+      - { order: 2, action: "Use light clothing — piling on blankets traps heat and raises temperature." }
+      - { order: 3, action: "Use over-the-counter fever medication as directed." }
+      - { order: 4, action: "A lukewarm sponge bath can help. Stop if the person starts to shiver — shivering raises body temperature." }
+    donts:
+      - "Do not give Aspirin to children or teenagers — it can cause Reye's syndrome."
+      - "Do not give fever medication to an infant under 3 months without a clinician's instruction."
+    medications:
+      - { name: "Acetaminophen", role: otc-pain-relief }
+      - { name: "Ibuprofen", role: otc-pain-relief }
+      - { name: "Aspirin", role: otc-pain-relief, pediatric_contraindication: true }
+    contraindications:
+      - { profile: "age_lt_3_months", action: refuse_self_care, escalate_to: nearest_clinic }
+    notes: "Any infant under 3 months with a measurable fever is an immediate clinic visit, full stop."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 23. Skin itch (rashes, hives, poison ivy)
+  # ---------------------------------------------------------------- #
+  - id: skin-itch-rash
+    title: Skin itch / rash
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [rash, hives, itch, poison-ivy, allergic-skin-reaction]
+    red_flags:
+      - rash-with-fever
+      - rash-spreading-rapidly
+      - swelling-of-lips-or-tongue
+      - difficulty-breathing
+      - rash-with-blisters-or-peeling-skin
+    steps:
+      - { order: 1, action: "If the trigger is a plant (poison ivy/oak), wash the skin immediately with soap and water to remove the plant oils." }
+      - { order: 2, action: "Apply a cool, damp cloth to the itchy area." }
+      - { order: 3, action: "Use an over-the-counter anti-itch cream as directed." }
+      - { order: 4, action: "An oral antihistamine can help if the itch is widespread or allergy-related." }
+    donts:
+      - "Do not scratch — broken skin invites bacterial infection."
+    medications:
+      - { name: "Hydrocortisone cream", role: otc-anti-itch }
+      - { name: "Calamine lotion", role: otc-anti-itch }
+      - { name: "Diphenhydramine (Benadryl)", role: otc-antihistamine }
+    contraindications: []
+    notes: "Any rash matching a red-flag should be seen by a clinician."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 24. Splinters
+  # ---------------------------------------------------------------- #
+  - id: splinter
+    title: Splinter
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [splinter, foreign-body-skin]
+    red_flags:
+      - splinter-deep-or-near-eye
+      - splinter-with-spreading-redness
+      - splinter-from-rusty-metal
+    steps:
+      - { order: 1, action: "Wash your hands and the area with soap and water." }
+      - { order: 2, action: "Sterilize a pair of tweezers with rubbing alcohol." }
+      - { order: 3, action: "Grasp the end of the splinter and pull it out at the same angle it entered." }
+      - { order: 4, action: "If the splinter is fully under the skin, sterilize a needle and gently nick the skin over the end of the splinter to lift it out." }
+      - { order: 5, action: "Apply antibiotic ointment after removal." }
+    donts:
+      - "Do not squeeze the area — it pushes the splinter deeper."
+    medications:
+      - { name: "Antibiotic ointment", role: otc-topical }
+    contraindications: []
+    notes: "If the splinter is from rusty metal and the patient's tetanus shot is more than 5 years old, see a clinician for a booster."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 25. Friction blisters
+  # ---------------------------------------------------------------- #
+  - id: blister-friction
+    title: Friction blister
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [blister, friction-injury]
+    red_flags:
+      - blister-from-burn
+      - blister-with-spreading-redness
+      - blister-with-fever
+    steps:
+      - { order: 1, action: "Leave intact blisters alone — the unbroken skin is a sterile bandage." }
+      - { order: 2, action: "Cover loosely with a bandage or a 'donut' of moleskin." }
+      - { order: 3, action: "If the blister breaks, clean with mild soap and water, apply antibiotic ointment, and cover with a bandage." }
+    donts:
+      - "Do not pop a healthy blister — you remove the skin's own protection."
+    medications:
+      - { name: "Antibiotic ointment", role: otc-topical }
+    contraindications: []
+    notes: "Burn blisters and friction blisters are different — see Burns (minor) for the burn case."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 26. Sunburn
+  # ---------------------------------------------------------------- #
+  - id: sunburn
+    title: Sunburn
+    severity: low
+    age_groups: [infant, child, adult]
+    symptom_slugs: [sunburn, sun-exposure-injury]
+    red_flags:
+      - sunburn-with-blisters-over-large-area
+      - sunburn-with-fever-or-chills
+      - sunburn-with-confusion-or-fainting
+      - infant-under-1-year-with-sunburn
+    steps:
+      - { order: 1, action: "Cool the skin with cool compresses or a cool bath." }
+      - { order: 2, action: "Apply a moisturizer with aloe vera or soy." }
+      - { order: 3, action: "Drink extra water to prevent dehydration." }
+    donts:
+      - "Do not pick at peeling skin — let it fall off naturally."
+      - "Do not apply ice directly — it can damage the burned skin."
+    medications: []
+    contraindications: []
+    notes: "Any infant under 1 year with sunburn should be seen — their skin and thermoregulation are immature."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 27. Hyperventilation (rapid breathing)
+  # ---------------------------------------------------------------- #
+  - id: hyperventilation
+    title: Hyperventilation (rapid breathing)
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [hyperventilation, rapid-breathing, panic-breathing, anxiety-breathing]
+    red_flags:
+      - chest-pain
+      - blue-lips-or-fingertips
+      - history-of-asthma
+      - first-ever-episode
+      - did-not-resolve-within-15-minutes
+    steps:
+      - { order: 1, action: "Stay calm. Reassure the person they are safe." }
+      - { order: 2, action: "Breathe with them: slow, deep breaths — in through the nose, out through pursed lips (like blowing out a candle)." }
+      - { order: 3, action: "Have them cup their hands over their mouth and nose and breathe into their hands." }
+    donts:
+      - "Do not use a paper bag — that is no longer the recommendation."
+      - "Do not assume hyperventilation if the person has chest pain, blue lips, or a history of asthma — those need medical assessment."
+    medications: []
+    contraindications: []
+    notes: "Asthma attacks and panic-driven hyperventilation look similar at first glance but need different treatment."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+
+  # ---------------------------------------------------------------- #
+  # 28. Strains vs sprains — clarifier (cross-references RICE)
+  # ---------------------------------------------------------------- #
+  - id: sprain-strain-clarifier
+    title: Sprain vs strain (what's the difference?)
+    severity: low
+    age_groups: [child, adult]
+    symptom_slugs: [sprain, strain]
+    red_flags: []
+    steps:
+      - { order: 1, action: "A sprain is an injury to a ligament (bone-to-bone connector)." }
+      - { order: 2, action: "A strain is an injury to a muscle or tendon (muscle-to-bone connector)." }
+      - { order: 3, action: "Both are treated with R.I.C.E. — see Sprains & strains." }
+    donts: []
+    medications: []
+    contraindications: []
+    notes: "This is an explanatory entry — it cross-references sprains-strains-rice for the actual procedure."
+    references: []
+    reviewed_by: pending
+    reviewed_on: null
+    escalation: self_care
+    cross_references: [sprains-strains-rice]

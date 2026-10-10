@@ -1,0 +1,28 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- soft scattered dots motif -->
+  <circle cx="32" cy="40" r="3" fill="#C9D7BC"/>
+  <circle cx="208" cy="56" r="4" fill="#F0D4CE"/>
+  <circle cx="200" cy="180" r="3" fill="#D8D0E8"/>
+  <circle cx="40" cy="200" r="4" fill="#F2E2A8"/>
+
+  <!-- shield body -->
+  <path d="M120 30 L188 60 V126 C188 168 158 196 120 210 C82 196 52 168 52 126 V60 Z"
+        fill="#E5D7C0"/>
+  <path d="M120 30 L188 60 V126 C188 168 158 196 120 210 C82 196 52 168 52 126 V60 Z"
+        stroke="#5C3A2E" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- inner panel -->
+  <path d="M120 56 L168 76 V124 C168 154 148 174 120 184 C92 174 72 154 72 124 V76 Z"
+        fill="#F1EEE6"/>
+
+  <!-- heart in the centre -->
+  <path d="M120 150
+           C92 130 86 100 104 92
+           C112 89 118 92 120 96
+           C122 92 128 89 136 92
+           C154 100 148 130 120 150 Z"
+        fill="#2A4A3D"/>
+  <!-- pulse line through the heart -->
+  <path d="M88 122 H106 L112 110 L122 134 L130 118 L136 122 H152"
+        stroke="#F2E2A8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- 4-pointed sparkle / brand mark -->
+  <path d="M32 4
+           C32 18 38 26 60 32
+           C38 38 32 46 32 60
+           C32 46 26 38 4 32
+           C26 26 32 18 32 4 Z"
+        fill="currentColor"/>
+</svg>

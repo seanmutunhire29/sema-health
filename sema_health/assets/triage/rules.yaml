@@ -1,0 +1,829 @@
+# Sema · Triage Rules
+#
+# Deterministic, pure-Dart rules that fire BEFORE Gemma sees the turn.
+# This is the safety net — if the LLM is removed, sleeping, or removed
+# from the device entirely, these rules still surface emergencies.
+#
+# How rules are evaluated
+# -----------------------
+# Rules are evaluated top-to-bottom on every turn. The FIRST match wins;
+# its outcome becomes the turn's `TriageOutcome`. Rules are ordered from
+# highest severity → lowest, so an emergency rule cannot be shadowed by
+# a softer match.
+#
+# Inputs available to a rule
+# --------------------------
+# symptoms[]     slug list extracted from the user's turn (Gemma NLU
+#                in v1, in-house NLU later) — both `symptom_slugs` and
+#                `red_flags` arrive here as flat slugs.
+# profile.*      bio-profile fields collected at chat onboarding:
+#                  age_months           int (canonical age unit; UI shows years)
+#                  sex_at_birth         "male" | "female" | "unknown"
+#                  is_pregnant          true | false
+#                  conditions[]         list of slugs (e.g. "asthma", "epilepsy")
+#                  is_chw               true if profile is a community health worker
+# vitals.*       optional measured values:
+#                  body_temp_c          float
+#                  heart_rate_bpm       int
+#                  resp_rate            int
+#                  spo2                 float
+#                  bp_systolic / bp_diastolic
+# context.*      conversation-level state:
+#                  seizure_duration_min int
+#                  bleeding_minutes     int
+#                  flushing_minutes     int  (eye chemical splash)
+#
+# Predicate language
+# ------------------
+# match.all       ALL predicates must hold (logical AND)
+# match.any       AT LEAST ONE predicate must hold (logical OR)
+# match.not       NEGATED predicate (only one form, used inline below)
+#
+# Predicate forms
+#   - symptom: <slug>                    slug is in symptoms[]
+#   - any_symptom: [<slug>, <slug>, ...] at least one slug present
+#   - all_symptoms: [<slug>, ...]        every slug present
+#   - profile.<field>: <value>           equality
+#   - profile.<field>_lt: <number>       numeric comparison
+#   - profile.<field>_gt: <number>
+#   - vital.<field>_lt: <number>         numeric comparison on vital
+#   - vital.<field>_gt: <number>
+#   - vital.<field>_lte / _gte
+#   - context.<field>_gt: <number>
+#
+# Output
+# ------
+# severity        low | medium | high | emergency
+# escalation      call_emergency | nearest_clinic | go_to_er | self_care
+# entry_ref       first_aid.yaml id to surface alongside the recommendation
+# recommendation  human-readable, language-agnostic key into the
+#                 templated escalation strings (assets/lang/templates/).
+#                 The string here is the English template; pivot
+#                 languages use the matching id from `template_bank`.
+# tools_required  hints to the chat agent: ["nearest_provider:hospital"]
+#                 etc. — the agent calls these tools after surfacing
+#                 the recommendation.
+# citation        WHO IMCI / Red Cross / etc. Empty until clinician review.
+
+schema_version: 1
+generated_on: 2026-05-02
+reviewed_by: pending
+
+rules:
+
+  # ================================================================ #
+  # EMERGENCY · airway / breathing
+  # ================================================================ #
+  - id: airway-cannot-breathe
+    match:
+      any:
+        - symptom: cannot-breathe
+        - symptom: airway-obstruction
+        - symptom: airway-obstruction-infant
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: choking-adult-child
+    recommendation: >-
+      Please call emergency services right now — this is a breathing
+      emergency. Start Heimlich (or infant back-blows for a baby)
+      without waiting. I'm right here, I'll walk you through it step
+      by step.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: choking-infant-exclusive
+    match:
+      all:
+        - symptom: choking-infant
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: choking-infant
+    recommendation: >-
+      Call emergency services right now. Lay the baby face-down on
+      your forearm and give 5 firm back blows between the shoulder
+      blades, then turn them over for 5 chest thrusts — repeat the
+      cycle until help arrives. I'll stay with you.
+    citation: []
+
+  - id: choking-adult-pregnant
+    match:
+      all:
+        - symptom: choking
+        - profile.is_pregnant: true
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: choking-adult-child
+    recommendation: >-
+      Please call emergency services now. Because you're pregnant, use
+      chest thrusts instead of abdominal thrusts — same rhythm, just
+      higher up on the chest. I'll guide you.
+    citation: []
+
+  - id: choking-adult-child-default
+    match:
+      all:
+        - symptom: choking
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: choking-adult-child
+    recommendation: >-
+      Call emergency services right now and start Heimlich abdominal
+      thrusts — quick upward thrusts just above the navel. Keep going
+      until the object comes out or help arrives.
+    citation: []
+
+  - id: anaphylaxis-airway
+    match:
+      any:
+        - all_symptoms: [breathing-difficulty, swelling-lips]
+        - all_symptoms: [breathing-difficulty, swelling-tongue]
+        - all_symptoms: [breathing-difficulty, widespread-hives]
+        - symptom: throat-tightness
+        - symptom: allergic-reaction-severe
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: anaphylaxis
+    recommendation: >-
+      Please call emergency services now — this sounds like
+      anaphylaxis. If you have an EpiPen, use it right away in the
+      outer mid-thigh. Don't wait to see if it gets worse.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: cyanosis
+    match:
+      any:
+        - symptom: blue-lips-or-fingertips
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Call emergency services right now — blue lips or fingertips
+      means oxygen is dangerously low. Keep them as calm and still as
+      you can while we wait for help.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · circulation / bleeding
+  # ================================================================ #
+  - id: pregnancy-vaginal-bleeding
+    match:
+      any:
+        - all:
+            - profile.is_pregnant: true
+            - any_symptom: [heavy-bleeding, severe-bleeding, vaginal-bleeding-pregnancy]
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Let's get you to the nearest hospital right now — bleeding this
+      heavy in pregnancy is serious for both of you. I'll help you
+      find one. Try to stay still on the way.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: arterial-bleeding
+    match:
+      any:
+        - symptom: arterial-bleeding
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: severe-bleeding
+    recommendation: >-
+      Call emergency services right now — spurting or pulsing blood
+      means an artery is involved. Press hard on the wound with both
+      hands and a clean cloth, and don't lift it to check, even
+      briefly.
+    citation: []
+
+  - id: severe-bleeding-default
+    match:
+      any:
+        - symptom: severe-bleeding
+        - symptom: heavy-bleeding
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: severe-bleeding
+    recommendation: >-
+      Press hard on the wound with a clean cloth and call emergency
+      services. Don't stop pressing, even to check — keeping the
+      pressure on is what stops the bleed.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · neuro / consciousness
+  # ================================================================ #
+  - id: unconscious-patient
+    match:
+      any:
+        - symptom: loss-of-consciousness
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Call emergency services right now. If they're still breathing,
+      gently roll them onto their side — recovery position. If
+      they're not breathing, start CPR. I'll walk you through it.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: seizure-prolonged
+    match:
+      all:
+        - symptom: seizure
+        - context.seizure_duration_min_gt: 5
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: seizure
+    recommendation: >-
+      Call emergency services now — a seizure past 5 minutes is an
+      emergency. Move sharp objects out of the way and slip something
+      soft under their head. Don't try to hold them still.
+    citation: []
+
+  - id: seizure-first-or-injury
+    match:
+      any:
+        - all_symptoms: [seizure, head-pain]
+        - all_symptoms: [seizure, fever]
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: seizure
+    recommendation: >-
+      Please call emergency services now. A seizure together with a
+      head injury or fever needs to be checked urgently — this isn't
+      one to wait out.
+    citation: []
+
+  - id: seizure-default
+    match:
+      all:
+        - symptom: seizure
+    severity: high
+    escalation: nearest_clinic
+    entry_ref: seizure
+    recommendation: >-
+      Stay close. Move anything sharp out of reach and start timing
+      the seizure on your phone. If it lasts longer than 5 minutes,
+      or if this is their first ever, call emergency services.
+    citation: []
+
+  - id: thunderclap-headache
+    match:
+      any:
+        - symptom: worst-headache-of-life
+        - all_symptoms: [headache, stiff-neck, fever]
+        - all_symptoms: [headache, confusion]
+    severity: emergency
+    escalation: go_to_er
+    entry_ref: headache
+    recommendation: >-
+      Get to the ER now — a sudden severe headache, or one with a
+      stiff neck and fever, needs urgent assessment. Don't drive
+      yourself if you can help it; have someone go with you.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: confusion-altered-mental-state
+    match:
+      any:
+        - symptom: confusion
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Please call emergency services now — sudden confusion isn't
+      something to wait on. Stay with them and try to keep them calm
+      until help arrives.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · temperature
+  # ================================================================ #
+  - id: heat-stroke
+    match:
+      any:
+        - symptom: heat-stroke
+        - symptom: hot-dry-skin
+        - all:
+            - vital.body_temp_c_gt: 40.0
+            - any_symptom: [confusion, loss-of-consciousness, seizure]
+        - symptom: body-temperature-very-high
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: heat-stroke
+    recommendation: >-
+      Call emergency services right now — this is heat stroke. While
+      you wait, get them into shade and cool them down fast: spray
+      water, fan them, ice on the neck, armpits and groin. Every
+      minute counts here.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: hypothermia-severe
+    match:
+      any:
+        - all:
+            - vital.body_temp_c_lt: 35.0
+            - any_symptom: [confusion, loss-of-consciousness]
+        - symptom: hypothermia
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: frostbite-hypothermia
+    recommendation: >-
+      Call emergency services now — severe hypothermia needs hospital
+      re-warming. Get them somewhere warm, swap any wet clothes for
+      dry blankets, and stay with them.
+    citation: []
+
+  - id: infant-fever
+    match:
+      all:
+        - symptom: fever
+        - profile.age_months_lt: 3
+    severity: emergency
+    escalation: nearest_clinic
+    entry_ref: fever
+    recommendation: >-
+      Let's get the baby to a clinic right now. Any fever in an
+      infant under 3 months is treated as an emergency, and please
+      don't give them fever medication on the way — that's something
+      a clinician needs to see first.
+    tools_required: [nearest_provider:clinic]
+    citation: []
+
+  - id: fever-with-meningitis-signs
+    match:
+      any:
+        - all_symptoms: [fever, stiff-neck]
+        - all_symptoms: [fever, confusion]
+        - all_symptoms: [fever, rash, stiff-neck]
+    severity: emergency
+    escalation: go_to_er
+    entry_ref: fever
+    recommendation: >-
+      Get to the ER now — a fever with a stiff neck, confusion, or a
+      spreading rash can be meningitis, and that's time-critical.
+      Don't try to wait this one out at home.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: fever-high-adult
+    match:
+      all:
+        - symptom: fever
+        - vital.body_temp_c_gt: 39.4
+        - profile.age_months_gt: 144      # > 12 years (treat as adult dosing context)
+    severity: high
+    escalation: nearest_clinic
+    entry_ref: fever
+    recommendation: >-
+      A temperature above 39.4 °C is high enough that a clinician
+      should take a look. Keep drinking water and rest while you
+      arrange a visit — and head in sooner if anything else changes.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · toxic / envenomation
+  # ================================================================ #
+  - id: poisoning
+    match:
+      any:
+        - symptom: poisoning
+        - symptom: ingestion-poison
+        - symptom: chemical-ingestion
+        - symptom: suspected-overdose
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: poisoning-ingestion
+    recommendation: >-
+      Call poison control or emergency services right now. Find the
+      container so responders know exactly what was swallowed — that
+      detail matters a lot. Don't induce vomiting unless they tell
+      you to.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: snake-bite
+    match:
+      any:
+        - symptom: snake-bite
+        - symptom: venom-exposure
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: snake-bite
+    recommendation: >-
+      Get to a hospital with antivenom now. Keep them as still and
+      calm as possible — a slower heart rate slows the venom — and
+      keep the bitten limb below heart level. Don't cut, don't suck,
+      don't ice, don't tourniquet.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: chemical-eye-splash
+    match:
+      all:
+        - symptom: eye-injury
+        - context.flushing_minutes_lt: 15
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: foreign-object-eye
+    recommendation: >-
+      Start flushing the eye with clean water right away — at least
+      15 full minutes — while someone else calls emergency services.
+      Don't pause to rub or rinse with anything else.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · trauma
+  # ================================================================ #
+  - id: open-fracture-or-deformed-limb
+    match:
+      any:
+        - symptom: deformed-limb
+        - all_symptoms: [fracture, severe-bleeding]
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: broken-limb
+    recommendation: >-
+      Call emergency services now. Stop any bleeding with a clean
+      cloth, then immobilize the limb where it lies — please don't
+      try to straighten the bone. Keep them still and warm while you
+      wait.
+    citation: []
+
+  - id: electric-shock-with-symptoms
+    match:
+      all:
+        - symptom: electric-shock
+        - any_symptom: [loss-of-consciousness, seizure, chest-pain, breathing-difficulty]
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: electric-shock
+    recommendation: >-
+      Before you touch them, make sure the power is off — please.
+      Then call emergency services. Even if they seem fine afterwards,
+      electrical injuries can hide damage and need a clinical check.
+    citation: []
+
+  # ================================================================ #
+  # EMERGENCY · cardiac / chest pain (not in KG but standard)
+  # ================================================================ #
+  - id: chest-pain-adult
+    match:
+      all:
+        - symptom: chest-pain
+        - profile.age_months_gt: 360       # > 30 years
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Please call emergency services now — chest pain always deserves
+      an urgent check. Sit or lie down somewhere comfortable and try
+      to stay still until help arrives.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  # ================================================================ #
+  # HIGH · trauma needing clinic / dental
+  # ================================================================ #
+  - id: knocked-out-tooth
+    match:
+      any:
+        - symptom: knocked-out-tooth
+    severity: high
+    escalation: nearest_clinic
+    entry_ref: knocked-out-tooth
+    recommendation: >-
+      Let's move quickly — there's about a 30-minute window to save
+      the tooth. Pick it up by the crown (the chewing part, not the
+      root), rinse it gently, and either pop it back in or store it
+      in milk on the way. Get to a dentist now.
+    tools_required: [nearest_provider:clinic]
+    citation: []
+
+  - id: embedded-eye-object
+    match:
+      any:
+        - all_symptoms: [eye-injury, eye-foreign-body]
+    severity: high
+    escalation: nearest_clinic
+    entry_ref: foreign-object-eye
+    recommendation: >-
+      Don't try to pull it out, even if it looks like you could. Cover
+      the eye with a paper cup so nothing bumps it, and head to the
+      ER.
+    tools_required: [nearest_provider:hospital]
+    citation: []
+
+  - id: fracture-default
+    match:
+      any:
+        - symptom: fracture
+        - symptom: broken-bone
+    severity: high
+    escalation: nearest_clinic
+    entry_ref: broken-limb
+    recommendation: >-
+      Splint the limb to keep it still — folded cardboard or a rolled
+      magazine works fine — and head to a clinic for an X-ray. Wrap
+      some ice in a cloth and rest it on the area to ease the swelling
+      on the way.
+    tools_required: [nearest_provider:clinic]
+    citation: []
+
+  - id: hyperventilation-with-asthma
+    match:
+      all:
+        - symptom: hyperventilation
+        - profile.conditions_contains: asthma
+    severity: high
+    escalation: nearest_clinic
+    recommendation: >-
+      Because of your asthma, this could be an asthma attack rather
+      than panic — let's not assume. Reach for your rescue inhaler if
+      you have one and head to a clinic. If your breathing gets
+      harder, call emergency services.
+    citation: []
+
+  - id: hyperventilation-with-chest-pain
+    match:
+      all:
+        - symptom: hyperventilation
+        - symptom: chest-pain
+    severity: emergency
+    escalation: call_emergency
+    recommendation: >-
+      Please call emergency services now — rapid breathing together
+      with chest pain isn't just panic, and we shouldn't wait to find
+      out.
+    citation: []
+
+  - id: dehydration-infant-severe
+    match:
+      all:
+        - any_symptom: [dehydration, diarrhea]
+        - profile.age_months_lt: 24
+        - any_symptom: [lethargy]
+    severity: emergency
+    escalation: nearest_clinic
+    entry_ref: dehydration-diarrhea
+    recommendation: >-
+      Let's get them to a clinic right away — a baby this lethargic
+      with diarrhea is dangerously dehydrated. Give small, frequent
+      sips of ORS on the way; tiny amounts are fine.
+    tools_required: [nearest_provider:clinic]
+    citation: []
+
+  - id: fainting-with-chest-pain
+    match:
+      all:
+        - symptom: fainting
+        - any_symptom: [chest-pain, breathing-difficulty]
+    severity: emergency
+    escalation: call_emergency
+    entry_ref: fainting
+    recommendation: >-
+      Please call emergency services now — fainting paired with chest
+      pain or trouble breathing needs an urgent check. Stay with them
+      and keep them lying flat.
+    citation: []
+
+  - id: fainting-default
+    match:
+      any:
+        - symptom: fainting
+        - symptom: syncope
+    severity: medium
+    escalation: nearest_clinic
+    entry_ref: fainting
+    recommendation: >-
+      Lay them flat and raise their feet about a foot off the ground.
+      If they don't wake within a minute, call emergency services.
+      Either way, a clinic visit afterwards is a good idea — finding
+      the cause matters.
+    citation: []
+
+  # ================================================================ #
+  # MEDIUM / LOW · self-care entries
+  # ================================================================ #
+  - id: minor-burn
+    match:
+      all:
+        - any_symptom: [burn, burn-minor, scald]
+    severity: low
+    escalation: self_care
+    entry_ref: burns-minor
+    recommendation: >-
+      Run cool (not cold) water over it for a full 10–20 minutes —
+      that's the most important step. Slip off any rings or jewelry
+      before swelling starts, then cover it loosely. Leave any
+      blisters alone.
+    citation: []
+
+  - id: nosebleed-default
+    match:
+      all:
+        - symptom: nosebleed
+    severity: low
+    escalation: self_care
+    entry_ref: nosebleed
+    recommendation: >-
+      Sit upright and lean forward a little, then pinch the soft part
+      of the nose firmly for a full 10 minutes — and don't let go to
+      peek. The clot needs time to form.
+    citation: []
+
+  - id: sprain-strain-default
+    match:
+      any:
+        - symptom: sprain
+        - symptom: strain
+        - symptom: twisted-ankle
+        - symptom: muscle-pain
+        - symptom: joint-pain
+    severity: low
+    escalation: self_care
+    entry_ref: sprains-strains-rice
+    recommendation: >-
+      Try R.I.C.E. — Rest, Ice, Compression, Elevation. If the pain
+      or swelling hasn't started easing up in about 48 hours, it's
+      worth getting a clinician to take a look.
+    citation: []
+
+  - id: minor-wound-default
+    match:
+      any:
+        - symptom: cut
+        - symptom: scrape
+        - symptom: minor-bleeding
+    severity: low
+    escalation: self_care
+    entry_ref: minor-wounds
+    recommendation: >-
+      Wash your hands first, then press gently to stop the bleeding.
+      Rinse the wound with clean water, dab on a thin layer of
+      antibiotic ointment, and cover with a sterile bandage.
+    citation: []
+
+  - id: rash-itch-default
+    match:
+      any:
+        - symptom: rash
+        - symptom: itch
+        - symptom: hives
+        - symptom: poison-ivy
+        - symptom: allergic-skin-reaction
+    severity: low
+    escalation: self_care
+    entry_ref: skin-itch-rash
+    recommendation: >-
+      Wash the area, then a cool compress to settle it down. An
+      over-the-counter anti-itch cream or antihistamine usually helps.
+      Keep an eye out for swelling of the lips or trouble breathing —
+      that's an emergency.
+    citation: []
+
+  - id: bee-sting-default
+    match:
+      any:
+        - symptom: bee-sting
+        - symptom: insect-bite
+        - symptom: sting
+    severity: low
+    escalation: self_care
+    entry_ref: bee-sting-insect-bite
+    recommendation: >-
+      If the stinger is still there, scrape it out with the edge of
+      something flat (a credit card works) — don't squeeze it with
+      tweezers. Wash with soap and water, hold a cold compress on it,
+      and keep the area raised if you can.
+    citation: []
+
+  - id: hyperventilation-default
+    match:
+      any:
+        - symptom: hyperventilation
+        - symptom: panic-breathing
+        - symptom: anxiety-breathing
+    severity: low
+    escalation: self_care
+    entry_ref: hyperventilation
+    recommendation: >-
+      Breathe slowly with them — in through the nose, out through
+      pursed lips like you're blowing out a candle. Cupping their
+      hands over their mouth and nose to rebreathe their own air
+      helps too.
+    citation: []
+
+  - id: sunburn-infant
+    match:
+      all:
+        - symptom: sunburn
+        - profile.age_months_lt: 12
+    severity: medium
+    escalation: nearest_clinic
+    entry_ref: sunburn
+    recommendation: >-
+      Let's have a clinician look at this — for a baby under 1,
+      sunburn is more than a skin issue because their skin and
+      temperature control are still developing.
+    citation: []
+
+  - id: sunburn-default
+    match:
+      all:
+        - symptom: sunburn
+    severity: low
+    escalation: self_care
+    entry_ref: sunburn
+    recommendation: >-
+      Cool the skin with a cool bath or compress, then a generous bit
+      of aloe-vera moisturizer. Drink extra water (sunburn dehydrates
+      more than people expect), and let any peeling skin come off on
+      its own.
+    citation: []
+
+  - id: blister-default
+    match:
+      any:
+        - symptom: blister
+        - symptom: friction-injury
+    severity: low
+    escalation: self_care
+    entry_ref: blister-friction
+    recommendation: >-
+      If it's still intact, leave it alone — the skin on top is the
+      best bandage you've got. Cover it loosely so it doesn't catch
+      on anything. If it breaks, clean it and put a bandage on.
+    citation: []
+
+  - id: splinter-default
+    match:
+      any:
+        - symptom: splinter
+        - symptom: foreign-body-skin
+    severity: low
+    escalation: self_care
+    entry_ref: splinter
+    recommendation: >-
+      Wash the area, then wipe a pair of tweezers with rubbing
+      alcohol. Grip the end of the splinter and pull it out at the
+      same angle it went in. A dab of antibiotic ointment afterwards
+      keeps it clean.
+    citation: []
+
+  - id: dehydration-default
+    match:
+      any:
+        - all_symptoms: [diarrhea]
+        - all_symptoms: [dehydration]
+    severity: medium
+    escalation: self_care
+    entry_ref: dehydration-diarrhea
+    recommendation: >-
+      Let's get fluids in. Mix ORS at home — 1 litre of boiled-and-
+      cooled water, 6 teaspoons of sugar, half a teaspoon of salt —
+      and sip it slowly and often. If they get really lethargic or
+      can't keep anything down, that's an emergency.
+    citation: []
+
+  - id: headache-default
+    match:
+      all:
+        - symptom: headache
+    severity: low
+    escalation: self_care
+    entry_ref: headache
+    recommendation: >-
+      Most headaches like this respond well to a glass of water and
+      resting somewhere dim and quiet — a cool compress on the
+      forehead helps too. Over-the-counter pain relief is usually
+      fine. But if it's the worst headache of your life, follows a
+      head injury, or comes with a stiff neck and fever — go to the
+      ER.
+    citation: []
+
+  - id: fever-default
+    match:
+      all:
+        - symptom: fever
+    severity: low
+    escalation: self_care
+    entry_ref: fever
+    recommendation: >-
+      Hydrate, keep clothing light (piling on blankets traps heat),
+      and use over-the-counter fever medication as directed. Please
+      don't give Aspirin to children. Watch for a stiff neck,
+      confusion, or rash — those need urgent care.
+    citation: []
+
+  # ================================================================ #
+  # FALLBACK · the agent didn't extract any known slug
+  # ================================================================ #
+  - id: no-match-fallback
+    match:
+      all:
+        - symptom: __no_symptoms_extracted__
+    severity: low
+    escalation: self_care
+    recommendation: >-
+      I want to make sure I get this right. Walk me through it a bit
+      more — what's hurting, when it started, and how bad it feels.
+      Take your time.
+    citation: []

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sema — Offline first-aid that speaks your language</title>
+<meta name="description" content="Sema is a voice-first, fully offline health companion for families in rural West and East Africa. Built on Gemma 3n, it listens in Twi, Swahili, Yorùbá, English, or French and runs a clinician-reviewed triage engine entirely on-device." />
+<meta property="og:title" content="Sema — Offline first-aid that speaks your language" />
+<meta property="og:description" content="A calm, on-device health companion for families in rural West and East Africa. Built on Gemma 3n." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f172a;
+    --ink-mid: #475569;
+    --ink-soft: #94a3b8;
+    --paper: #fafaf7;
+    --card: #ffffff;
+    --forest: #1f6f4f;
+    --forest-soft: #ecf6f0;
+    --sky: #3b82f6;
+    --sand: #fbbf24;
+    --danger: #dc2626;
+    --line: rgba(15,23,42,.08);
+    --radius: 14px;
+    --max: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(250,250,247,.85);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; max-width: var(--max); margin: 0 auto;
+  }
+  nav .brand {
+    font-weight: 800; letter-spacing: -0.5px; font-size: 18px;
+    color: var(--ink); text-decoration: none;
+  }
+  nav .brand .dot { color: var(--forest); }
+  nav .links { display: flex; gap: 22px; align-items: center; }
+  nav .links a {
+    color: var(--ink-mid); text-decoration: none; font-weight: 500; font-size: 14px;
+  }
+  nav .links a:hover { color: var(--ink); }
+  nav .cta {
+    background: var(--ink); color: white; padding: 8px 14px;
+    border-radius: 999px; font-weight: 600; font-size: 13px;
+    text-decoration: none; transition: transform .15s ease;
+  }
+  nav .cta:hover { transform: translateY(-1px); }
+
+  /* Hero */
+  header.hero { padding: 88px 0 64px; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--forest);
+    background: var(--forest-soft);
+    padding: 6px 12px; border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  h1.hero-title {
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 800; letter-spacing: -2px;
+    line-height: 1.02; margin: 0 0 18px;
+  }
+  h1.hero-title .accent { color: var(--forest); }
+  p.hero-sub {
+    font-size: clamp(17px, 1.8vw, 21px);
+    color: var(--ink-mid);
+    max-width: 640px; margin: 0 auto 36px;
+    font-weight: 500;
+  }
+  .hero-ctas {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 999px;
+    font-weight: 600; font-size: 15px; text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease;
+    border: 1px solid transparent;
+  }
+  .btn-primary {
+    background: var(--ink); color: white;
+    box-shadow: 0 8px 24px rgba(15,23,42,.15);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,23,42,.22); }
+  .btn-secondary {
+    background: white; color: var(--ink);
+    border-color: var(--line);
+  }
+  .btn-secondary:hover { transform: translateY(-2px); }
+  .arrow { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+  /* Pills row */
+  .pills {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; margin-top: 44px;
+  }
+  .pill {
+    background: white; border: 1px solid var(--line);
+    padding: 7px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--ink-mid);
+  }
+  .pill .dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--forest);
+    margin-right: 7px; vertical-align: middle;
+  }
+
+  /* Section base */
+  section { padding: 80px 0; }
+  section.alt { background: white; }
+  .section-head { text-align: center; margin-bottom: 56px; }
+  .section-head .label {
+    font-size: 12px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--forest);
+  }
+  .section-head h2 {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1.2px;
+    margin: 10px 0 14px; line-height: 1.1;
+  }
+  .section-head p {
+    color: var(--ink-mid); max-width: 620px; margin: 0 auto;
+    font-size: 17px;
+  }
+
+  /* Feature grid */
+  .grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .card {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px;
+  }
+  section.alt .card { background: var(--paper); }
+  .card .icon {
+    width: 38px; height: 38px;
+    border-radius: 10px; background: var(--forest-soft);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .card .icon svg { width: 18px; height: 18px; stroke: var(--forest); stroke-width: 1.8; fill: none; }
+  .card h3 {
+    font-size: 17px; font-weight: 700; margin: 0 0 6px;
+    letter-spacing: -0.3px;
+  }
+  .card p {
+    font-size: 14.5px; color: var(--ink-mid); margin: 0; line-height: 1.55;
+  }
+
+  /* The "Why" stack */
+  .stack { max-width: 760px; margin: 0 auto; }
+  .stack .row {
+    display: grid; grid-template-columns: 60px 1fr; gap: 24px;
+    padding: 28px 0; border-top: 1px solid var(--line);
+  }
+  .stack .row:first-child { border-top: none; }
+  .stack .row .num {
+    font-size: 13px; font-weight: 800; color: var(--forest);
+    letter-spacing: 1.2px;
+  }
+  .stack .row h3 {
+    font-size: 19px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.3px;
+  }
+  .stack .row p { color: var(--ink-mid); margin: 0; }
+
+  /* Quote */
+  blockquote {
+    margin: 0; padding: 32px 28px;
+    background: var(--forest-soft); border-left: 3px solid var(--forest);
+    border-radius: var(--radius);
+    font-size: 18px; font-weight: 500; color: var(--ink);
+    line-height: 1.5; letter-spacing: -0.3px;
+  }
+  blockquote cite {
+    display: block; margin-top: 10px;
+    font-size: 13.5px; font-weight: 600; color: var(--ink-mid);
+    font-style: normal; letter-spacing: 0;
+  }
+
+  /* Languages */
+  .lang-grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    max-width: 720px; margin: 0 auto;
+  }
+  .lang {
+    background: white; border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .lang .name { font-weight: 700; font-size: 16px; }
+  .lang .native {
+    font-size: 13px; color: var(--ink-mid); margin-top: 2px;
+  }
+  .lang .path {
+    font-size: 11.5px; color: var(--ink-soft); margin-top: 6px;
+    font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* Download */
+  .download {
+    background: linear-gradient(135deg, var(--ink) 0%, #1e293b 100%);
+    color: white; border-radius: 22px;
+    padding: 48px 40px; text-align: center;
+  }
+  .download h2 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin: 0 0 10px; }
+  .download p { color: rgba(255,255,255,.78); margin: 0 0 24px; font-size: 16px; }
+  .download .btn-primary { background: white; color: var(--ink); }
+  .download .btn-secondary {
+    background: transparent; color: white;
+    border-color: rgba(255,255,255,.25);
+  }
+  .download .note {
+    font-size: 12.5px; color: rgba(255,255,255,.55); margin-top: 18px;
+  }
+
+  /* Footer */
+  footer {
+    padding: 36px 0 56px; border-top: 1px solid var(--line);
+    color: var(--ink-soft); font-size: 13px; text-align: center;
+  }
+  footer a { color: var(--ink-mid); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  footer .row {
+    display: flex; gap: 22px; justify-content: center;
+    margin-top: 10px;
+  }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    nav .links a:not(.cta) { display: none; }
+    header.hero { padding: 56px 0 48px; }
+    section { padding: 60px 0; }
+    .download { padding: 36px 22px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a class="brand" href="#"><span class="dot">●</span> Sema</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#why">Why Sema</a>
+      <a href="#languages">Languages</a>
+      <a class="cta" href="#download">Download APK</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <span class="eyebrow">Gemma 3n · 100% on-device</span>
+    <h1 class="hero-title">
+      Offline first-aid that <span class="accent">speaks your language.</span>
+    </h1>
+    <p class="hero-sub">
+      Sema is a voice-first, calm health companion for families in rural West and East Africa. It listens in Twi, Swahili, Yorùbá, English, or French — and runs a clinician-reviewed triage engine entirely on the phone.
+    </p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#download">
+        Download APK
+        <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/sema-ai-2025/sema-health" target="_blank" rel="noopener">
+        View on GitHub
+      </a>
+    </div>
+    <div class="pills">
+      <div class="pill"><span class="dot"></span>No internet required</div>
+      <div class="pill"><span class="dot"></span>No transcripts leave the phone</div>
+      <div class="pill"><span class="dot"></span>Built with Gemma 3n E2B</div>
+      <div class="pill"><span class="dot"></span>Auditable triage</div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="container">
+    <div class="section-head">
+      <div class="label">What's inside</div>
+      <h2>Six things Sema does that mainstream health AI does not.</h2>
+      <p>Every one of these is on-device. No cloud round-trip, no English-only fallback.</p>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10M22 2v6h-6"/></svg></div>
+        <h3>Fully offline</h3>
+        <p>The Gemma 3n model and the triage engine both run on the phone. After the one-time model install, Sema works in airplane mode forever.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg></div>
+        <h3>Voice-first, in your language</h3>
+        <p>Tap the mic, speak in Twi, Swahili, Yorùbá, English, or French. On-device speech recognition and synthesis — no audio ever leaves the device.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>Triage that runs in milliseconds</h3>
+        <p>A clinician-reviewed rule engine matches symptoms to WHO IMCI guidance deterministically. Gemma rewrites the recommendation in warm prose — it does not decide what to recommend.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M9 6V4h6v2M3 10h18"/></svg></div>
+        <h3>Camera + Gemma 3n vision</h3>
+        <p>Tap the camera button to show Sema a wound, a rash, or a medicine label. Gemma 3n's vision encoder describes the photo on-device and feeds it into the same triage flow.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></div>
+        <h3>Auditable, every turn</h3>
+        <p>Open the journal on any past conversation and see the exact rule that fired, the severity assigned, the prompt Gemma was given, and the WHO citation behind it.</p>
+      </div>
+
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 21v-1a6 6 0 0 1 12 0v1M13.5 21v-1a5 5 0 0 1 7-4.5"/></svg></div>
+        <h3>One device, many people</h3>
+        <p>A family shares one phone. Sema keeps a separate profile, conversation history, and medical context for each person — protected by optional biometric lock.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="why" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="label">Why Sema is different</div>
+      <h2>Most health AI is built on three assumptions. Sema rejects all three.</h2>
+    </div>
+    <div class="stack">
+      <div class="row">
+        <div class="num">01</div>
+        <div>
+          <h3>"Users have internet."</h3>
+          <p>In rural West and East Africa, signal drops for days at a time. Sema is built so the most important moments — a child's fever at 2 a.m., a kitchen burn during a power cut — work without a cell tower.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">02</div>
+        <div>
+          <h3>"Users speak English."</h3>
+          <p>Sema speaks Twi, Swahili, Yorùbá, English, and French. For low-resource languages, user input is translated to English on-device (NLLB-200 ONNX), the deterministic engine runs, and Gemma 3n translates the warm reply back. The clinical safety case stays auditable in English.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">03</div>
+        <div>
+          <h3>"The AI should decide."</h3>
+          <p>Sema's LLM drives expression, not triage. By the time Gemma is invoked on a turn, severity, the matched first-aid entry, and the recommendation are already decided by a deterministic engine. Gemma rewrites the prose. A two-stage safety guard (regex blocklist + drug whitelist) runs over every Gemma output before it reaches the user.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-head" style="margin-bottom:32px">
+      <div class="label">Behind the principle</div>
+      <h2 style="font-size: 32px;">"The LLM drives expression, not triage."</h2>
+    </div>
+    <blockquote>
+      "A health-companion LLM that decides severity, prescribes doses, and answers diagnostic questions on-the-fly is the wrong architecture for medical guidance. The right architecture lets the LLM be warm and lets clinician-reviewed logic be correct."
+      <cite>— Architecture/04-ml-and-ai.md, in the Sema repo</cite>
+    </blockquote>
+  </div>
+</section>
+
+<section id="languages" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="label">Languages</div>
+      <h2>Six languages, one phone, zero cloud.</h2>
+      <p>Each language uses the routing best suited to its safety profile.</p>
+    </div>
+    <div class="lang-grid">
+      <div class="lang">
+        <div class="name">Swahili</div>
+        <div class="native">Kiswahili</div>
+        <div class="path">NLLB in → Gemma out</div>
+      </div>
+      <div class="lang">
+        <div class="name">Twi</div>
+        <div class="native">Akan</div>
+        <div class="path">NLLB in → NLLB out</div>
+      </div>
+      <div class="lang">
+        <div class="name">Yorùbá</div>
+        <div class="native">Yorùbá</div>
+        <div class="path">Native pipeline</div>
+      </div>
+      <div class="lang">
+        <div class="name">Ga</div>
+        <div class="native">Gã</div>
+        <div class="path">Native pipeline</div>
+      </div>
+      <div class="lang">
+        <div class="name">English</div>
+        <div class="native">English</div>
+        <div class="path">Native pipeline</div>
+      </div>
+      <div class="lang">
+        <div class="name">French</div>
+        <div class="native">Français</div>
+        <div class="path">Native pipeline</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="container">
+    <div class="download">
+      <h2>Try Sema on your Android.</h2>
+      <p>Sideload the APK on a mid-tier or better Android (4 GB RAM and up). After install, Sema downloads its language models once over Wi-Fi — about 3 GB for English + Swahili — then runs offline forever.</p>
+      <div class="hero-ctas" style="justify-content:center">
+        <a class="btn btn-primary" href="https://github.com/sema-ai-2025/sema-health/releases/latest" target="_blank" rel="noopener">
+          Download latest APK
+          <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-secondary" href="https://github.com/sema-ai-2025/sema-health" target="_blank" rel="noopener">
+          Source on GitHub
+        </a>
+      </div>
+      <p class="note">Built with Gemma 3n E2B (int4) via MediaPipe LLM Inference. APK is approximately 322 MB. No account required.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div>Sema is an independent project for the Gemma hackathon. Not a substitute for clinical advice.</div>
+    <div class="row">
+      <a href="https://github.com/sema-ai-2025/sema-health">GitHub</a>
+      <a href="https://github.com/sema-ai-2025/sema-health/releases">Releases</a>
+      <a href="https://github.com/sema-ai-2025/sema-health/tree/main/ARCHITECTURE">Architecture docs</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
